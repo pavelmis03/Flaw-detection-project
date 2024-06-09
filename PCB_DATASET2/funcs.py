@@ -5,13 +5,18 @@
 import xml.etree.ElementTree as ET
 import os
 
+import random
+
 from tkinter import filedialog
 
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.image as immg
 
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
 
+# чтение файлов аннотаций
 def readXMLAnnotation(path_an):
     # получение всех файлов аннотаций
     all_files = []  # файлы аннотаций
@@ -74,6 +79,7 @@ def parseXMLToDS(dataset, all_files):
                                 dataset['ymax'] += [ymax]
     return dataset
 
+# открытие через проводник изображения для вывода ограничивающей рамки вокруг дефектов
 def openImgFile():
     # root = Tk()
     # root.title("Выберете изображение для анализа")
@@ -94,8 +100,8 @@ def openImgFile():
     filepath = filepath[-1].split(".")
     return filepath[0]
 
+# вывод ограничивающей рамки
 def drawPlotImage(image_name, path_img, name, df_grp):
-    print(image_name)
     image_group = df_grp.get_group(image_name)
     bbox = image_group.loc[:, ['xmin', 'ymin', 'xmax', 'ymax']]
     if ("missing" in name.split('_')):
@@ -116,7 +122,7 @@ def drawPlotImage(image_name, path_img, name, df_grp):
     ax.imshow(img, cmap='binary')
     for i in range(len(bbox)):
         box = bbox.iloc[i].values
-        print(box)
+        # print(box)
         x, y, w, h = box[0], box[1], box[2] - box[0], box[3] - box[1]
         rect = matplotlib.patches.Rectangle((x, y), w, h, linewidth=1, edgecolor='r', facecolor='none', )
         # ax.text(*box[:2], image_group["class"].values, verticalalignment='top', color='white', fontsize=13, weight='bold')
@@ -125,8 +131,37 @@ def drawPlotImage(image_name, path_img, name, df_grp):
 
     return name
 
+# !!!разобраться, что делают эти строки, прокомментировать!!!
+def getTrainTransform():
+    return A.Compose([
+        ToTensorV2(p=1.0)
+    ], bbox_params={'format': 'pascal_voc', 'label_fields': ['labels']})
 
+# !!!разобраться, что делают эти строки, прокомментировать!!!
+def getValidTransform():
+    return A.Compose([
+        ToTensorV2(p=1.0)
+    ], bbox_params={'format': 'pascal_voc', 'label_fields': ['labels']})
 
+# !!!разобраться, что делает функция, прокомментировать!!!
+# обозначение дефектов
+def titleDefects(fcb_dataset, image_name):
+    # img, tar, _ = fcb_dataset[random.randint(0, 50)]
+    img, tar, _ = fcb_dataset[image_name]
+    # print(img, tar)
+    bbox = tar['boxes']
+    fig, ax = plt.subplots(figsize=(18, 10))
+    ax.imshow(img.permute(1, 2, 0).cpu().numpy())
+    for j in tar["labels"].tolist():
+        classes_la = {0: "missing_hole", 1: "mouse_bite", 2: "open_circuit", 3: "short", 4: 'spur', 5: 'spurious_copper'}
+        l = classes_la[j]
+        for i in range(len(bbox)):
+            box = bbox[i]
+            x, y, w, h = box[0], box[1], box[2] - box[0], box[3] - box[1]
+            rect = matplotlib.patches.Rectangle((x, y), w, h, linewidth=2, edgecolor='r', facecolor='none',)
+            ax.text(x, y - 35, l, verticalalignment='top', color='red', fontsize=13, weight='bold')
+            ax.add_patch(rect)
+        plt.show()
 
 
 

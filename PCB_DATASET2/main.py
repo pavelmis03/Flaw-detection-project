@@ -13,9 +13,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 from sklearn.metrics import confusion_matrix
 
-import albumentations as A
-from albumentations.pytorch import ToTensorV2
-
 import torch
 import torchvision
 import torchvision.transforms as T
@@ -34,9 +31,15 @@ from funcs import parseXMLToDS
 from funcs import readXMLAnnotation
 from funcs import openImgFile
 from funcs import drawPlotImage
+from funcs import getTrainTransform
+from funcs import getValidTransform
+from funcs import titleDefects
 
 # функции вывода информации
 from printInfo import printAnnotationPath
+
+# классы
+from models import CustomDataBase
 
 # !!!написать документацию по функциям !!!
 # !!!разобраться, что делают эти строки, прокомментировать!!!
@@ -139,143 +142,63 @@ print(image_name, "\n")
 
 # !!!разобраться, что делают эти строки, прокомментировать!!!
 image_group = df_grp.get_group(image_name)
-print(image_group)
+print(image_group, "\n")
 
 # получаем информацию по ограничивающим рамкам для данного изображения
 bbox = image_group.loc[:, ['xmin', 'ymin', 'xmax', 'ymax']]
-print([bbox, type(bbox)])
+print(bbox, "\n", type(bbox), "\n")
 
 # создаем график matplotlib с изображением, где отмечены дефекты
 # !!!разобраться, как работает функция, прокомментировать!!!
-name = drawPlotImage(image_name, path_img, image_name, df_grp)
+# name = drawPlotImage(image_name, path_img, image_name, df_grp)
 
-'''
-name = train.file[500]
-name = drawPlotImage(image_name, path_img, image_name, df_grp)
+# вывод дополнительного изображения
+# name = train.file[500]
+# name = drawPlotImage(image_name, path_img, image_name, df_grp)
 
-name = train.file[100]
-name = drawPlotImage(image_name, path_img, image_name, df_grp)
 
-name = train.file[105]
-name = drawPlotImage(image_name, path_img, image_name, df_grp)
-'''
-
-'''
 # IV. Creating Custom database
 
 
-class fcbData(object):
-    def __init__(self, df, IMG_DIR, transforms):
-        self.df = df
-        self.img_dir = IMG_DIR
-        self.image_ids = self.df['file'].unique().tolist()
-        self.transforms = transforms
+print("\nЧасть 4: Создание пользовательской БД и обозначение дефектов\n\n")
+# !!!разобраться, как работает класс, прокомментировать!!!
+custom_dataset = CustomDataBase(df, path_img + "/", getTrainTransform())
 
-    def __len__(self):
-        return len(self.image_ids)
+# датасет от тензора
+# print(custom_dataset)
+# print(type(custom_dataset[0]), len(custom_dataset[0]), type(custom_dataset[0][0]), type(custom_dataset[0][1]), type(custom_dataset[0][2]))
+# print([custom_dataset[0][0], custom_dataset[0][1], custom_dataset[0][2]])
 
-    def __getitem__(self, idx):
-        image_id = self.image_ids[idx]
-        a = ''
-        if "missing" in image_id.split('_'):
-            a = 'Missing_hole/'
-        elif "mouse" in image_id.split('_'):
-            a = 'Mouse_bite/'
-        elif "open" in image_id.split('_'):
-            a = 'Open_circuit/'
-        elif "short" in image_id.split('_'):
-            a = 'Short/'
-        elif "spur" in image_id.split('_'):
-            a = 'Spur/'
-        elif "spurious" in image_id.split('_'):
-            a = 'Spurious_copper/'
-        image_values = self.df[self.df['file'] == image_id]
-        image = cv2.imread(self.img_dir + a + image_id + ".jpg", cv2.IMREAD_COLOR)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32)
-        image /= 255.0
+# подписываем дефекты
+titleDefects(custom_dataset, image_name)
 
-        boxes = image_values[['xmin', 'ymin', 'xmax', 'ymax']].to_numpy()
-        area = (boxes[:, 3] - boxes[:, 1]) * (boxes[:, 2] - boxes[:, 0])
 
-        labels = image_values["class"].values
-        labels = torch.tensor(labels)
-
-        target = {}
-        target['boxes'] = boxes
-        target['labels'] = labels
-        target['image_id'] = torch.tensor([idx])
-        target['area'] = torch.as_tensor(area, dtype=torch.float32)
-        target['iscrowd'] = torch.zeros(len(classes_la), dtype=torch.int64)
-
-        if self.transforms:
-            sample = {
-                'image': image,
-                'bboxes': target['boxes'],
-                'labels': labels
-            }
-
-            sample = self.transforms(**sample)
-            image = sample['image']
-
-            target['boxes'] = torch.stack(tuple(map(torch.tensor, zip(*sample['bboxes'])))).permute(1, 0)
-
-        return torch.tensor(image), target, image_id
-
-def get_train_transform():
-    return A.Compose([
-        ToTensorV2(p=1.0)
-    ], bbox_params={'format': 'pascal_voc', 'label_fields': ['labels']})
-
-def get_valid_transform():
-    return A.Compose([
-        ToTensorV2(p=1.0)
-    ], bbox_params={'format': 'pascal_voc', 'label_fields': ['labels']})
-
-path = "PCB_DATASET/images/"
-fcb_dataset = fcbData(df, path, get_train_transform())
-
-print(type(fcb_dataset[0]), len(fcb_dataset[0]), type(fcb_dataset[0][0]), type(fcb_dataset[0][1]), type(fcb_dataset[0][2]))
-
-print([fcb_dataset[0][0], fcb_dataset[0][1], fcb_dataset[0][2]])
-
-img, tar, _ = fcb_dataset[random.randint(0,50)]
-bbox = tar['boxes']
-fig,ax = plt.subplots(figsize=(18,10))
-ax.imshow(img.permute(1,2,0).cpu().numpy())
-for j in tar["labels"].tolist():
-    classes_la = {0:"missing_hole", 1: "mouse_bite", 2:"open_circuit",3: "short", 4:'spur',5:'spurious_copper'}
-    l = classes_la[j]
-    for i in range(len(bbox)):
-        box = bbox[i]
-        x,y,w,h = box[0], box[1], box[2]-box[0], box[3]-box[1]
-        rect = matplotlib.patches.Rectangle((x,y),w,h,linewidth=2,edgecolor='r',facecolor='none',)
-        ax.text(*box[:2], l, verticalalignment='top', color='red', fontsize=13, weight='bold')
-        ax.add_patch(rect)
-    plt.show()
-
+print("Длина датафрейма: ")
 print(len(df))
 
+# на всякий случай избавляемся от дубляжей
 image_ids = df['file'].unique()
+
+# разделяем изображения и датафрейм на две части: для обучения и для проверки
 valid_ids = image_ids[-665:]
 train_ids = image_ids[:-665]
 valid_df = df[df['file'].isin(valid_ids)]
 train_df = df[df['file'].isin(train_ids)]
 
+print("Размеры датафремов для обучения и для проверки: ")
 print(train_df.shape, valid_df.shape)
 
-'''
 
 # Dataloader
 
+
+print("\n\nЧасть 5: Загрузка данных\n\n")
 '''
-
-print(path)
-
 def collate_fn(batch):
     return tuple(zip(*batch))
 
-train_dataset = fcbData(df, path, get_train_transform())
-valid_dataset = fcbData(df, path, get_valid_transform())
+train_dataset = custom_dataset(df, path_img + "/", getTrainTransform())
+valid_dataset = custom_dataset(df, path_img + "/", getValidTransform())
 
 # split the dataset in train and test set
 indices = torch.randperm(len(train_dataset)).tolist()
