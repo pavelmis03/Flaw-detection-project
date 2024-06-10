@@ -34,6 +34,7 @@ from funcs import drawPlotImage
 from funcs import getTrainTransform
 from funcs import getValidTransform
 from funcs import titleDefects
+from funcs import getTupleFromZip
 
 # функции вывода информации
 from printInfo import printAnnotationPath
@@ -192,23 +193,22 @@ print(train_df.shape, valid_df.shape)
 # Dataloader
 
 
-print("\n\nЧасть 5: Загрузка данных\n\n")
-'''
-def collate_fn(batch):
-    return tuple(zip(*batch))
+print("\n\nЧасть 5: Загрузка датасетов в память\n\n")
 
-train_dataset = custom_dataset(df, path_img + "/", getTrainTransform())
-valid_dataset = custom_dataset(df, path_img + "/", getValidTransform())
+# сгенерированные датасеты для обучения и проверки
+train_dataset = CustomDataBase(df, path_img + "/", getTrainTransform())
+valid_dataset = CustomDataBase(df, path_img + "/", getValidTransform())
 
-# split the dataset in train and test set
+# разделим набор данных на обучающий и тестовый наборы
 indices = torch.randperm(len(train_dataset)).tolist()
 
+# загружаем в память датасеты методами параллельной загрузки
 train_data_loader = DataLoader(
     train_dataset,
     batch_size=1,
     shuffle=False,
     num_workers=6,
-    collate_fn=collate_fn
+    collate_fn=getTupleFromZip
 )
 
 valid_data_loader = DataLoader(
@@ -216,43 +216,53 @@ valid_data_loader = DataLoader(
     batch_size=1,
     shuffle=False,
     num_workers=6,
-    collate_fn=collate_fn
+    collate_fn=getTupleFromZip
 )
 
-print(next(iter(train_data_loader)))
+# должен печатать следующий блок данных, но перезапускает прогу:))
+# print(next(iter(train_data_loader)))
 
-## num_classes = 6 # + background
+# Большинство предварительно обученных моделей обучаются с помощью фонового класса,
+# мы включим его в нашу модель, так что в этом случае количество наших классов составит 6
 num_classes = 6
 
-# load a model; pre-trained on COCO
-# .. fpn = 'feature pyramid network'
+# загрузите модель, предварительно обученную на COCO
+# fpn = 'feature pyramid network'
+# !!!узнать подробности, разобраться, как работает, написать вывод в файлике ворда!!!
 model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
 
-
-# get number of input features for the classifier
+# получение количества входных признаков для классификатора
+# !!!узнать подробности, разобраться, как работает, написать вывод в файлике ворда!!!
 in_features = model.roi_heads.box_predictor.cls_score.in_features
 
-# replace the pre-trained head with a new one
+# заменим предварительно подготовленный заголовок на новый
 model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
+# !!!узнать подробности, разобраться, как работает, написать вывод в файлике ворда!!!
 
-device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+# !!!узнать подробности, разобраться, как работает, комментарии!!!
+device = torch.device('cuda') if (torch.cuda.is_available()) else torch.device('cpu')
 
+# !!!узнать подробности, разобраться, как работает, комментарии!!!
 model.to(device)
 params = [p for p in model.parameters() if p.requires_grad]
 optimizer = torch.optim.Adam(params, lr=0.0001, weight_decay=0.0005,)
 lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.1)
 
+# количество итераций обучения
 num_epochs = 1
-
 
 
 # VI. Training and evaluation
 
 
+'''
+print("\n\nЧасть 6: Обучение и оценка\n\n")
+#print("Загрузчик tourch: ")
+#print(train_data_loader)
 
-print(train_data_loader)
-
+# лучшая итерация
 best_epoch = 0
+#для поиска минимума потерь
 min_loss = sys.maxsize
 
 for epoch in range(num_epochs):

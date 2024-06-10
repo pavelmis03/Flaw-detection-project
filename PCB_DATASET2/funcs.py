@@ -164,4 +164,6 @@ def titleDefects(fcb_dataset, image_name):
         plt.show()
 
 
+def getTupleFromZip(batch):
+    return tuple(zip(*batch))
 
