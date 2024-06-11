@@ -67,21 +67,21 @@ def main():
     all_files = readXMLAnnotation(path_an)
 
     # красивый вывод файлов путей аннотаций
-    # printAnnotationPath(all_files, path_an)
+    printAnnotationPath(all_files, path_an)
 
     # пока пустой ДС
     print("Датасет до заполнения: ")
-    # print(type(dataset))
+    print(type(dataset))
     print(dataset)
 
     # собранные данные из файлов аннотаций
     dataset = parseXMLToDS(dataset, all_files)
-    # print("\n\nРазобранным xml файлы в словаре dataset: ")
-    # print(dataset, "\n\n")
+    print("\n\nРазобранный xml файлы в словаре dataset: ")
+    print(dataset, "\n\n")
     # датафрейм пандас по полученным данным
     data = pd.DataFrame(dataset)
-    # print("Пандавское представление полученных данных: ")
-    # print(data, "\n\n")
+    print("Представление полученных данных в датафрейме pandas: ")
+    print(data, "\n\n")
 
 
     # II Reading the CSV file
@@ -143,6 +143,7 @@ def main():
     # вывод дополнительного изображения
     # name = train.file[500]
     # name = drawPlotImage(image_name, path_img, image_name, df_grp)
+    print("Анализ файлов для обучения закончен\n")
 
 
     # IV. Creating Custom database
@@ -152,27 +153,36 @@ def main():
     # !!!разобраться, как работает класс, прокомментировать!!!
     custom_dataset = CustomDataBase(df, path_img + "/", getTrainTransform())
 
+    print("Создаем пользовательскую БД...", "\n")
     # датасет от тензора
-    # print(custom_dataset)
-    # print(type(custom_dataset[0]), len(custom_dataset[0]), type(custom_dataset[0][0]), type(custom_dataset[0][1]), type(custom_dataset[0][2]))
-    # print([custom_dataset[0][0], custom_dataset[0][1], custom_dataset[0][2]])
+    print(custom_dataset)
+    print(type(custom_dataset[0]), len(custom_dataset[0]), type(custom_dataset[0][0]), type(custom_dataset[0][1]), type(custom_dataset[0][2]))
+    print([custom_dataset[0][0], custom_dataset[0][1], custom_dataset[0][2]])
 
     # подписываем дефекты
     titleDefects(custom_dataset, image_name)
+    print("Подписываем столбцы полученного датафрейма...", "\n")
 
+    print("Получившийся датафрейм: ")
+    print(df, "\n")
     print("Длина датафрейма: ")
-    print(len(df))
+    print(len(df), "\n")
 
     # на всякий случай избавляемся от дубляжей
     image_ids = df['file'].unique()
 
     # разделяем изображения и датафрейм на две части: для обучения и для проверки
+    print("\nРазделяем изображения и датафрейм на две части: для обучения и для проверки...", "\n")
     valid_ids = image_ids[-665:]
+    print("Данные для проверки")
+    print(valid_ids, "\n")
     train_ids = image_ids[:-665]
+    print("Данные для обучения")
+    print(train_ids, "\n")
     valid_df = df[df['file'].isin(valid_ids)]
     train_df = df[df['file'].isin(train_ids)]
 
-    print("Размеры датафремов для обучения и для проверки: ")
+    print("\nРазмеры датафремов для обучения и для проверки: ")
     print(train_df.shape, valid_df.shape)
 
 
@@ -188,6 +198,7 @@ def main():
     # перемешиваем данные в нашем датасете для увеличения независимости результатов
     indices = torch.randperm(len(train_dataset)).tolist()
 
+    print("Загружаем в память датасеты методами параллельной загрузки...", "\n")
     # загружаем в память датасеты методами параллельной загрузки
     train_data_loader = DataLoader(
         train_dataset,
@@ -216,6 +227,8 @@ def main():
 
     # загрузите модель, предварительно обученную на COCO
     # fpn = 'feature pyramid network'
+
+    print("Загрузка модели для обучения...", "\n")
     # !!!узнать подробности, разобраться, как работает, написать вывод в файлике ворда!!!
     model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
 
@@ -227,6 +240,7 @@ def main():
     model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
     # !!!узнать подробности, разобраться, как работает, написать вывод в файлике ворда!!!
 
+    print("Настраиваем загруженную модель...", "\n")
     # !!!узнать подробности, разобраться, как работает, комментарии!!!
     device = torch.device('cuda') if (torch.cuda.is_available()) else torch.device('cpu')
 
@@ -239,19 +253,22 @@ def main():
     # количество итераций обучения
     num_epochs = 1
 
+    print("Модель загружена, настроена и готова к обучению:)")
+
 
     # VI. Training and evaluation
 
 
     print("\n\nЧасть 6: Обучение модели для работы с нашими данными\n\n")
-    # print("Загрузчик tourch: ")
-    # print(train_data_loader)
+    print("Загрузчик tourch: ")
+    print(train_data_loader, "\n")
 
     # лучшая итерация
     best_epoch = 0
     #для поиска минимума потерь
     min_loss = sys.maxsize
 
+    print("Производим обучение модели\n")
     # обучение модели
     trainingModel(model, train_data_loader, num_epochs, valid_data_loader, device, optimizer, lr_scheduler)
 
@@ -336,7 +353,7 @@ def main():
     boxes = outputs[0]['boxes'].detach().cpu().numpy()
     labels = outputs[0]['labels'].detach().cpu().numpy()
     
-    # визуализируем изображение и предсказанные ограничивающие рамки
+    # визуализируем изображение и предсказанные ограничивающие рЫамки
     visualiseTrainingResults(image, boxes, labels, defect_names)
 
 
