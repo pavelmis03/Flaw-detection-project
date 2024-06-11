@@ -41,14 +41,17 @@ def readXMLAnnotation(path_an):
 
 
 # заполнение ДС информацией из файлов аннотаций
-# !!!разобраться, как работает парсинг, прокомментировать!!!
 def parseXMLToDS(dataset, all_files):
+    # Проходим по каждому файлу в списке all_files
     for anno in all_files:
+        # Парсим (делаем удобный стиль для нас) XML файл и создаем объект ElementTree
         tree = ET.parse(anno)
 
+        # Итерация по каждому элементу в дереве XML
         for elem in tree.iter():
             #print(elem)
 
+            # Если элемент содержит информацию о размере изображения
             if 'size' in elem.tag:
                 #print('[size] in elem.tag ==> list(elem)\n'), print(list(elem))
                 for attr in list(elem):
@@ -57,10 +60,12 @@ def parseXMLToDS(dataset, all_files):
                     if 'height' in attr.tag:
                         height = int(round(float(attr.text)))
 
+            # Если элемент содержит информацию об объекте
             if 'object' in elem.tag:
                 #print('[object] in elem.tag ==> list(elem)\n'), print(list(elem))
                 for attr in list(elem):
 
+                    # Извлекаем имя объекта и добавляем его в словарь dataset
                     #print('attr = %s\n' % attr)
                     if 'name' in attr.tag:
                         name = attr.text
@@ -69,6 +74,7 @@ def parseXMLToDS(dataset, all_files):
                         dataset['height'] += [height]
                         dataset['file'] += [anno.split('/')[-1][0:-4]]
 
+                    # Извлекаем координаты ограничивающего прямоугольника и добавляем их в словарь dataset
                     if 'bndbox' in attr.tag:
                         for dim in list(attr):
                             if 'xmin' in dim.tag:
@@ -83,20 +89,44 @@ def parseXMLToDS(dataset, all_files):
                             if 'ymax' in dim.tag:
                                 ymax = int(round(float(dim.text)))
                                 dataset['ymax'] += [ymax]
+
+    # Возвращаем обновленный словарь dataset
     return dataset
 
 # открытие через проводник изображения для вывода ограничивающей рамки вокруг дефектов
 def openImgFile():
-    # открываем файл в текстовое поле
-    filepath = filedialog.askopenfilename()
+    # Возможные типы дефектов
+    defects = ['missing_hole', 'mouse_bite', 'open_circuit', 'short', 'spur', 'spurious_copper']
+    # Возможные типы открываемых файлов
+    file_types = ['jpg', 'png']
+    # Логическая переменная для выхода из цикла проверки
+    bool_exit = False
+    # Результатное имя файла
+    result = ''
+    while (not(bool_exit)):
+        # Открываем файл
+        filepath = filedialog.askopenfilename().lower()
+        # разбираем путь
+        file_list = filepath.split('/')
+        if ('pcb_dataset' in file_list) and ('images' in file_list):
+            # Проверяем, что в пути к файлу есть один из типов дефектов
+            filename = file_list[-1].split('.')[0]
+            if (filename[3:-3] in defects):
+                if (file_list[-1].split('.')[1] in file_types):
+                    # Проверяем на сопадение типа файла
+                    bool_exit = True
+                    result = filename
+                else:
+                    print('Неверный тип выбранного файла')
+            else:
+                print('Неверное наименование выбранного файла')
+        else:
+            print('Неверная директория выбранного файла')
+    return result
 
-    # !!!проверка на правильность директории!!!
-    #while (flag):
-        #filepath = filedialog.askopenfilename()
-
-    filepath = filepath.split("/")
-    filepath = filepath[-1].split(".")
-    return filepath[0]
+    # filepath = filepath.split("/")
+    # filepath = filepath[-1].split(".")
+    # return filepath[0]
 
 # вывод ограничивающей рамки
 def drawPlotImage(image_name, path_img, name, df_grp):
@@ -129,14 +159,18 @@ def drawPlotImage(image_name, path_img, name, df_grp):
 
     return name
 
-# !!!разобраться, что делают эти строки, прокомментировать!!!
+# Определяем функцию getTrainTransform, которая возвращает объект Compose из библиотеки albumentations.
+# Этот объект Compose содержит одно преобразование ToTensorV2, которое преобразует изображение в тензор PyTorch.
 def getTrainTransform():
     return A.Compose([
         ToTensorV2(p=1.0)
     ], bbox_params={'format': 'pascal_voc', 'label_fields': ['labels']})
 
-# !!!разобраться, что делают эти строки, прокомментировать!!!
+# Определяем функцию getValidTransform, которая не принимает никаких аргументов.
+# Зачем это нужно: Для создания и возврата набора трансформаций, которые будут применены к данным при их валидации (проверке).
 def getValidTransform():
+    # Что делает: Возвращает объект A.Compose, который является композицией (сочетанием) трансформаций, используемых для обработки изображений и их метаданных.
+    # Зачем это нужно: Для последовательного применения ряда трансформаций к изображениям и соответствующим меткам в процессе валидации.
     return A.Compose([
         ToTensorV2(p=1.0)
     ], bbox_params={'format': 'pascal_voc', 'label_fields': ['labels']})

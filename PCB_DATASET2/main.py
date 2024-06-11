@@ -67,12 +67,12 @@ def main():
     all_files = readXMLAnnotation(path_an)
 
     # красивый вывод файлов путей аннотаций
-    printAnnotationPath(all_files, path_an)
+    # printAnnotationPath(all_files, path_an)
 
     # пока пустой ДС
-    print("Датасет до заполнения: ")
-    print(type(dataset))
-    print(dataset)
+    # print("Датасет до заполнения: ")
+    # print(type(dataset))
+    # print(dataset)
 
     # собранные данные из файлов аннотаций
     dataset = parseXMLToDS(dataset, all_files)
@@ -128,16 +128,14 @@ def main():
     print("Вы выбрали изображение для анализа: ")
     print(image_name, "\n")
 
-    # !!!разобраться, что делают эти строки, прокомментировать!!!
     image_group = df_grp.get_group(image_name)
-    print(image_group, "\n")
+    # print(image_group, "\n")
 
     # получаем информацию по ограничивающим рамкам для данного изображения
     bbox = image_group.loc[:, ['xmin', 'ymin', 'xmax', 'ymax']]
-    print(bbox, "\n", type(bbox), "\n")
+    # print(bbox, "\n", type(bbox), "\n")
 
     # создаем график matplotlib с изображением, где отмечены дефекты
-    # !!!разобраться, как работает функция, прокомментировать!!!
     # name = drawPlotImage(image_name, path_img, image_name, df_grp)
 
     # вывод дополнительного изображения
@@ -155,18 +153,18 @@ def main():
 
     print("Создаем пользовательскую БД...", "\n")
     # датасет от тензора
-    print(custom_dataset)
-    print(type(custom_dataset[0]), len(custom_dataset[0]), type(custom_dataset[0][0]), type(custom_dataset[0][1]), type(custom_dataset[0][2]))
-    print([custom_dataset[0][0], custom_dataset[0][1], custom_dataset[0][2]])
+    # print(custom_dataset)
+    # print(type(custom_dataset[0]), len(custom_dataset[0]), type(custom_dataset[0][0]), type(custom_dataset[0][1]), type(custom_dataset[0][2]))
+    # print([custom_dataset[0][0], custom_dataset[0][1], custom_dataset[0][2]])
 
     # подписываем дефекты
     titleDefects(custom_dataset, image_name)
     print("Подписываем столбцы полученного датафрейма...", "\n")
 
-    print("Получившийся датафрейм: ")
-    print(df, "\n")
-    print("Длина датафрейма: ")
-    print(len(df), "\n")
+    # print("Получившийся датафрейм: ")
+    # print(df, "\n")
+    # print("Длина датафрейма: ")
+    # print(len(df), "\n")
 
     # на всякий случай избавляемся от дубляжей
     image_ids = df['file'].unique()
@@ -174,11 +172,11 @@ def main():
     # разделяем изображения и датафрейм на две части: для обучения и для проверки
     print("\nРазделяем изображения и датафрейм на две части: для обучения и для проверки...", "\n")
     valid_ids = image_ids[-665:]
-    print("Данные для проверки")
-    print(valid_ids, "\n")
+    # print("Данные для проверки")
+    # print(valid_ids, "\n")
     train_ids = image_ids[:-665]
-    print("Данные для обучения")
-    print(train_ids, "\n")
+    # print("Данные для обучения")
+    # print(train_ids, "\n")
     valid_df = df[df['file'].isin(valid_ids)]
     train_df = df[df['file'].isin(train_ids)]
 
@@ -260,8 +258,8 @@ def main():
 
 
     print("\n\nЧасть 6: Обучение модели для работы с нашими данными\n\n")
-    print("Загрузчик tourch: ")
-    print(train_data_loader, "\n")
+    # print("Загрузчик tourch: ")
+    # print(train_data_loader, "\n")
 
     # лучшая итерация
     best_epoch = 0
@@ -273,7 +271,7 @@ def main():
     trainingModel(model, train_data_loader, num_epochs, valid_data_loader, device, optimizer, lr_scheduler)
 
     print("\nОбучение модели завершено!\n")
-    print(torch.save(model.state_dict(), 'pcbdetection.pt'))
+    # print(torch.save(model.state_dict(), 'pcbdetection.pt'))
 
 
     # VII. Evaluation
