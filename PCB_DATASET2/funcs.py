@@ -175,24 +175,35 @@ def getValidTransform():
         ToTensorV2(p=1.0)
     ], bbox_params={'format': 'pascal_voc', 'label_fields': ['labels']})
 
-# !!!разобраться, что делает функция, прокомментировать!!!
-# обозначение дефектов
+# Функция для отображения изображения с обозначенными дефектами
 def titleDefects(fcb_dataset, image_name):
+    # Получаем изображение и метки для заданного имени изображения из набора данных
     # img, tar, _ = fcb_dataset[random.randint(0, 50)]
     img, tar, _ = fcb_dataset[image_name]
     # print(img, tar)
     bbox = tar['boxes']
+
+    # Создаем холст и отображаем на нем изображение
     fig, ax = plt.subplots(figsize=(18, 10))
     ax.imshow(img.permute(1, 2, 0).cpu().numpy())
+
+    # Для каждой метки на изображении создаем ограничивающий прямоугольник и добавляем его на изображение
     for j in tar["labels"].tolist():
+        # Соответствие числовых меток текстовым описаниям дефектов
         classes_la = {0: "missing_hole", 1: "mouse_bite", 2: "open_circuit", 3: "short", 4: 'spur', 5: 'spurious_copper'}
         l = classes_la[j]
         for i in range(len(bbox)):
             box = bbox[i]
+            # Извлекаем координаты прямоугольника
             x, y, w, h = box[0], box[1], box[2] - box[0], box[3] - box[1]
+            # Создаем прямоугольник
             rect = matplotlib.patches.Rectangle((x, y), w, h, linewidth=2, edgecolor='r', facecolor='none',)
+            # Добавляем текст с описанием дефекта над прямоугольником
             ax.text(x, y - 35, l, verticalalignment='top', color='red', fontsize=13, weight='bold')
+            # Добавляем прямоугольник на изображение
             ax.add_patch(rect)
+
+        # Отображаем изображение с добавленными прямоугольниками и текстом
         plt.show()
 
 
