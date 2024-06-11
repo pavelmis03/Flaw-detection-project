@@ -28,7 +28,7 @@ import ast
 # подключение наших модулей
 # функции обработки данных
 from funcs import (parseXMLToDS, readXMLAnnotation, openImgFile, drawPlotImage, getTrainTransform)
-from funcs import (getValidTransform, titleDefects, getTupleFromZip, trainingModel)
+from funcs import (getValidTransform, titleDefects, getTupleFromZip, trainingModel, visualiseTrainingResults)
 
 # функции вывода информации
 from printInfo import printAnnotationPath
@@ -243,7 +243,7 @@ def main():
     # VI. Training and evaluation
 
 
-    print("\n\nЧасть 6: Обучение и оценка. Для работы с нашими данными\n\n")
+    print("\n\nЧасть 6: Обучение модели для работы с нашими данными\n\n")
     # print("Загрузчик tourch: ")
     # print(train_data_loader)
 
@@ -255,87 +255,90 @@ def main():
     # обучение модели
     trainingModel(model, train_data_loader, num_epochs, valid_data_loader, device, optimizer, lr_scheduler)
 
-    print("dkdlfkdflkvmdfivmdofvlmdfvljkdfmvdfomkvdlkmcdklfmvldkfmvlkdfm")
+    print("\nОбучение модели завершено!\n")
     print(torch.save(model.state_dict(), 'pcbdetection.pt'))
 
 
-    '''
     # VII. Evaluation
-    
-    
-    
-    y_true =[]
+
+
+    print("\n\nЧасть 7: Оценка качества обучения модели\n\n")
+    y_true = []
     y_pred = []
+
+    # проверяем работу модели на той части датасета, которую мы не использовали для обучения
     for i in range(50):
         img, target, _ = valid_dataset[i]
         model.eval()
         with torch.no_grad():
             prediction = model([img.to(device)])[0]
+
+    # получаем из модели столбцы с именами файлов
     y_true.append(target['labels'][0])
-            y_pred.append(prediction['labels'][0])
-    
-    print(y_pred)
-    
+    y_pred.append(prediction['labels'][0])
+
+    print("Массив полученных после обучения модели изображений: ")
+    print(y_pred, "\n")
+
+    # добавляем время обработки процессором
     yy_pred = []
     for v in y_pred:
         yy_pred.append(v.cpu())
+
+    print("Затраченное на обработку изображений процессорное время: ")
+    print(yy_pred, "\n")
+    print(y_true, "\n")
+
+    # оценка точности классификации
+    print("Матрица спутанности: ")
+    print(confusion_matrix(y_true, yy_pred))
+
+    # print(classification_report(y_true, yy_pred))
     
-    print(yy_pred)
-    print(y_true)
-    
-    confusion_matrix(y_true, yy_pred)
-    
-    # classification_report로 평가 지표 확인하기
-    # .. https://blog.naver.com/PostView.naver?blogId=hannaurora&logNo=222498671200&parentCategoryNo=&categoryNo=41&viewDate=&isShowPopularPosts=true&from=search
-    print(classification_report(y_true, yy_pred))
-    
-    # Define the device for inference (CPU or GPU)
+    # Определите устройство для вывода (CPU или GPU-процессор)
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    
+
+    # наименования дефектов
     defect_names = {
-    1: "Open Circuit",
-    2: "Short Circuit",
-    3: "Mouse Bite",
-    4: "Spur",
-    5: "Copper Trace Cut"
+        1: "Open Circuit",
+        2: "Short Circuit",
+        3: "Mouse Bite",
+        4: "Spur",
+        5: "Copper Trace Cut"
     }
-    # Load the model
+
+    # загружаем модель
     model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=False, num_classes=6)
     in_features = model.roi_heads.box_predictor.cls_score.in_features
     model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes=6)
-    model.load_state_dict(torch.load('/kaggle/working/pcbdetection.pt'))
+    model.load_state_dict(torch.load('pcbdetection.pt'))
     model.eval()
     model.to(device)
     
-    # Load the image
-    image_path = '/kaggle/input/pcb-defects/PCB_DATASET/images/Mouse_bite/01_mouse_bite_01.jpg'
-    image = cv2.imread(image_path)
+    # загружаем изображения
+    image_name = openImgFile()
+
+    print("Вы выбрали изображение для анализа: ")
+    print(image_name, "\n")
+    image = cv2.imread(image_name)
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     image = image / 255.0
     
-    # Define the transformation to apply to the image
+    # преобразования, которые будут применены к изображению
     transform = T.Compose([T.ToTensor()])
     
-    # Apply the transformation to the image
+    # применим преобразования к изображению
     image = transform(image).to(device)
     
-    # Predict the bounding boxes and labels for the image
+    # предсказываем ограничивающие рамки и надписи для изображения
     image = image.float()
     outputs = model([image])
     boxes = outputs[0]['boxes'].detach().cpu().numpy()
     labels = outputs[0]['labels'].detach().cpu().numpy()
     
-    # Visualize the image and the predicted bounding boxes
-    fig, ax = plt.subplots(figsize=(12, 8))
-    ax.imshow(image.permute(1, 2, 0).cpu().numpy())
-    for box, label in zip(boxes, labels):
-        x1, y1, x2, y2 = box
-        w, h = x2 - x1, y2 - y1
-        rect = matplotlib.patches.Rectangle((x1, y1), w, h, linewidth=2, edgecolor='r', facecolor='none')
-        ax.add_patch(rect)
-        ax.text(x1-20, y2 + 50, defect_names[label], fontsize=12, color='g', backgroundcolor='w')
-    plt.show()
-    '''
+    # визуализируем изображение и предсказанные ограничивающие рамки
+    visualiseTrainingResults(image, boxes, labels, defect_names)
+
 
 if __name__ == "__main__":
     # freeze_support()

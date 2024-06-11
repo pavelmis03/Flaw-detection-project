@@ -162,6 +162,7 @@ def titleDefects(fcb_dataset, image_name):
         plt.show()
 
 
+# разорхиватор
 def getTupleFromZip(batch):
     return tuple(zip(*batch))
 
@@ -172,6 +173,7 @@ def trainingModel(model, train_data_loader, num_epochs, valid_data_loader, devic
         tk = tqdm(train_data_loader)
         model.train()
         loss_value = 0
+        # обучение на данных для обучения
         for images, targets, image_ids in tk:
             images = list(image.to(device) for image in images)
             targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
@@ -192,12 +194,14 @@ def trainingModel(model, train_data_loader, num_epochs, valid_data_loader, devic
         if lr_scheduler is not None:
             lr_scheduler.step()
 
+        # цикл обучения и процент ошибок
         print(f"Epoch #{epoch} loss: {loss_value}")
 
         # validation
         model.eval()
         with torch.no_grad():
             tk = tqdm(valid_data_loader)
+            # тестирование полученной модели
             for images, targets, image_ids in tk:
                 images = list(image.to(device) for image in images)
                 targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
@@ -211,3 +215,15 @@ def trainingModel(model, train_data_loader, num_epochs, valid_data_loader, devic
                     IOU.append(res)
                 tk.set_postfix(IoU=np.mean(IOU))
             tk.close()
+
+# визуализируем изображение и предсказанные ограничивающие рамки
+def visualiseTrainingResults(image, boxes, labels, defect_names):
+    fig, ax = plt.subplots(figsize=(12, 8))
+    ax.imshow(image.permute(1, 2, 0).cpu().numpy())
+    for box, label in zip(boxes, labels):
+        x1, y1, x2, y2 = box
+        w, h = x2 - x1, y2 - y1
+        rect = matplotlib.patches.Rectangle((x1, y1), w, h, linewidth=2, edgecolor='r', facecolor='none')
+        ax.add_patch(rect)
+        ax.text(x1-20, y2 + 50, defect_names[label], fontsize=12, color='g', backgroundcolor='w')
+    plt.show()

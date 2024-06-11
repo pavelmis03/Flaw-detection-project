@@ -114,8 +114,8 @@ class CustomDataBase(object):
             target['boxes'] = torch.stack(tuple(map(torch.tensor, zip(*sample['bboxes'])))).permute(1, 0)
 
         # Возвращаем тензор изображения, аннотации и идентификатор изображения
-        # return torch.tensor(image), target, image_id # было (так выпадает с ошибкой)
-        return image.clone().detach(), target, image_id # поменял по рекомендации (так зацикливается непонятно где)
+        return torch.tensor(image), target, image_id
+        # return image.clone().detach(), target, image_id
 
     def __str__(self):
         # Метод для строкового представления объекта класса
