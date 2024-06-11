@@ -8,7 +8,8 @@ import cv2
 
 import torch
 
-# !!!разобраться с классом, прокомментировать!!!
+# класс, который хранит в себе датафрейм изображений и аннотаций к ним
+# по запросу выдает тензор изображения и словарь основных параметров этого изображения
 class CustomDataBase(object):
     def __init__(self, df, IMG_DIR, transforms):
         # Инициализация класса. Этот конструктор инициализирует объект CustomDataBase с датафреймом df,
@@ -46,9 +47,9 @@ class CustomDataBase(object):
         # Применяет аугментации, если они указаны в transforms.
 
         # Если img - число, оно будет строкой, проверяем и обрабатываем как индекс
-        if (img.isdigit()):
+        if (isinstance(img, int)):
             # Убедимся, что индекс в допустимых пределах
-            img = max(min(0, img), len(self.image_ids))
+            img = min(max(0, img), len(self.image_ids))
         else:
             # Если img - строка, ищем его в списке идентификаторов изображений
             try:
@@ -113,7 +114,8 @@ class CustomDataBase(object):
             target['boxes'] = torch.stack(tuple(map(torch.tensor, zip(*sample['bboxes'])))).permute(1, 0)
 
         # Возвращаем тензор изображения, аннотации и идентификатор изображения
-        return torch.tensor(image), target, image_id
+        # return torch.tensor(image), target, image_id # было (так выпадает с ошибкой)
+        return image.clone().detach(), target, image_id # поменял по рекомендации (так зацикливается непонятно где)
 
     def __str__(self):
         # Метод для строкового представления объекта класса

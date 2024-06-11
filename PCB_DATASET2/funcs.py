@@ -5,7 +5,13 @@
 import xml.etree.ElementTree as ET
 import os
 
-import random
+import numpy as np
+
+from tqdm import tqdm
+from tqdm.notebook import tqdm
+
+import torch
+import torchvision
 
 from tkinter import filedialog
 
@@ -81,14 +87,6 @@ def parseXMLToDS(dataset, all_files):
 
 # открытие через проводник изображения для вывода ограничивающей рамки вокруг дефектов
 def openImgFile():
-    # root = Tk()
-    # root.title("Выберете изображение для анализа")
-    # root.geometry("250x200")
-
-    # root.grid_rowconfigure(index=0, weight=1)
-    # root.grid_columnconfigure(index=0, weight=1)
-    # root.grid_columnconfigure(index=1, weight=1)
-
     # открываем файл в текстовое поле
     filepath = filedialog.askopenfilename()
 
@@ -167,3 +165,49 @@ def titleDefects(fcb_dataset, image_name):
 def getTupleFromZip(batch):
     return tuple(zip(*batch))
 
+# обучение модели
+def trainingModel(model, train_data_loader, num_epochs, valid_data_loader, device, optimizer, lr_scheduler):
+    for epoch in range(num_epochs):
+        # для красивого отображения загрузки
+        tk = tqdm(train_data_loader)
+        model.train()
+        loss_value = 0
+        for images, targets, image_ids in tk:
+            images = list(image.to(device) for image in images)
+            targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
+
+            loss_dict = model(images, targets)
+
+            losses = sum(loss for loss in loss_dict.values())
+            loss_value = losses.item()
+
+            optimizer.zero_grad()
+            losses.backward()
+            optimizer.step()
+
+            tk.set_postfix(train_loss=loss_value)
+        tk.close()
+
+        # update the learning rate
+        if lr_scheduler is not None:
+            lr_scheduler.step()
+
+        print(f"Epoch #{epoch} loss: {loss_value}")
+
+        # validation
+        model.eval()
+        with torch.no_grad():
+            tk = tqdm(valid_data_loader)
+            for images, targets, image_ids in tk:
+                images = list(image.to(device) for image in images)
+                targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
+                val_output = model(images)
+                val_output = [{k: v.to(device) for k, v in t.items()} for t in val_output]
+                IOU = []
+                for j in range(len(val_output)):
+                    a, b = val_output[j]['boxes'].cpu().detach(), targets[j]['boxes'].cpu().detach()
+                    chk = torchvision.ops.box_iou(a, b)
+                    res = np.nanmean(chk.sum(axis=1) / (chk > 0).sum(axis=1))
+                    IOU.append(res)
+                tk.set_postfix(IoU=np.mean(IOU))
+            tk.close()
