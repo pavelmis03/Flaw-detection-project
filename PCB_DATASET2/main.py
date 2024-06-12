@@ -87,7 +87,7 @@ def main():
     # собранные данные из файлов аннотаций
     dataset = parseXMLToDS(dataset, all_files)
     print("\n\nРазобранный xml файлы в словаре dataset: ")
-    print(dataset, "\n\n")
+    # print(dataset, "\n\n")
     # датафрейм пандас по полученным данным
     data = pd.DataFrame(dataset)
     print("Представление полученных данных в датафрейме pandas: ")
@@ -390,7 +390,7 @@ def main():
     boxes = outputs[0]['boxes'].detach().cpu().numpy()
     labels = outputs[0]['labels'].detach().cpu().numpy()
     
-    # визуализируем изображение и предсказанные ограничивающие рЫамки
+    # визуализируем изображение и предсказанные ограничивающие рамки
     visualiseTrainingResults(image, boxes, labels, defect_names)
 
 
